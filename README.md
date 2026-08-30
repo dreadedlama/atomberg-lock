@@ -1,4 +1,5 @@
-# Atomberg Lock
+# Atomberg Smart Lock
+
 
 [![GitHub Release][releases-shield]][releases]
 [![GitHub Activity][commits-shield]][commits]
@@ -6,9 +7,7 @@
 
 ![Project Maintenance][maintenance-shield]
 
-[![Community Forum][forum-shield]][forum]
-
-*Custom Home Assistant integration for the **[Atomberg](https://atomberg.com/)** smart door lock via local Bluetooth Low Energy (BLE).*
+*Custom Home Assistant integration for the **[Atomberg Smart Locks](https://atomberg.com/collections/smart-locks)** via local Bluetooth Low Energy (BLE).*
 
 > **Note**  
 > This is an unofficial custom integration and is not affiliated with or endorsed by Atomberg.
