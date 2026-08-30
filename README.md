@@ -1,15 +1,9 @@
 # Atomberg Smart Lock
 
 
-[![GitHub Release][releases-shield]][releases]
-[![GitHub Activity][commits-shield]][commits]
-[![License][license-shield]](LICENSE)
-
-![Project Maintenance][maintenance-shield]
-
 *Custom Home Assistant integration for the **[Atomberg Smart Locks](https://atomberg.com/collections/smart-locks)** via local Bluetooth Low Energy (BLE).*
 
-> **Note**  
+> **Note**
 > This is an unofficial custom integration and is not affiliated with or endorsed by Atomberg.
 
 ---
@@ -54,10 +48,8 @@ The easiest way to extract your `LOCK_MAC`, `STATIC_MASTER_KEY`, and `LOCK_SALT`
 6. Connect your phone to your computer and run:
    ```bash
    adb bugreport
-
-```
-
-This will generate a zip file and download it to your computer.
+   ```
+   This will generate a zip file and download it to your computer.
 7. Extract the zip file and retrieve `btsnoop_hci.log` from:
 
 ```text
