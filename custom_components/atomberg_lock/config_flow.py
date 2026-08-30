@@ -59,6 +59,63 @@ async def _async_validate_lock_credentials(
         await protocol.disconnect()
 
 
+class AtombergOptionsFlowHandler(config_entries.OptionsFlow):
+    async def async_step_init(self, user_input=None):
+        errors = {}
+        entry = self.config_entry
+
+        if user_input is not None:
+            address = user_input[CONF_LOCK_MAC].strip().upper()
+            raw_key = user_input[CONF_STATIC_MASTER_KEY].strip()
+            raw_salt = user_input[CONF_LOCK_SALT].strip()
+
+            key_bytes = _parse_master_key(raw_key)
+            salt_bytes = _parse_lock_salt(raw_salt)
+
+            if key_bytes is None:
+                errors["base"] = "invalid_master_key"
+            elif salt_bytes is None:
+                errors["base"] = "invalid_lock_salt"
+            else:
+                try:
+                    battery = await _async_validate_lock_credentials(self.hass, address, key_bytes, salt_bytes)
+                    self.hass.config_entries.async_update_entry(
+                        entry,
+                        data={
+                            **entry.data,
+                            CONF_LOCK_MAC: address,
+                            CONF_STATIC_MASTER_KEY: raw_key,
+                            CONF_LOCK_SALT: raw_salt,
+                            "initial_battery": battery,
+                        },
+                    )
+                    await self.hass.config_entries.async_reload(entry.entry_id)
+                    return self.async_create_entry(title="", data={})
+                except ConnectionError:
+                    errors["base"] = "cannot_connect"
+                except Exception as err:
+                    _LOGGER.error("Lock options validation failed: %s", err)
+                    errors["base"] = "auth_failed"
+
+        current_address = entry.data.get(CONF_LOCK_MAC, entry.data.get("address", ""))
+        current_key = entry.data.get(CONF_STATIC_MASTER_KEY, entry.data.get("master_key", entry.data.get("static_key", "")))
+        current_salt = entry.data.get(CONF_LOCK_SALT, "")
+
+        default_mac = user_input.get(CONF_LOCK_MAC, current_address) if user_input else current_address
+        default_key = user_input.get(CONF_STATIC_MASTER_KEY, current_key) if user_input else current_key
+        default_salt = user_input.get(CONF_LOCK_SALT, current_salt) if user_input else current_salt
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema({
+                vol.Required(CONF_LOCK_MAC, default=default_mac): str,
+                vol.Required(CONF_STATIC_MASTER_KEY, default=default_key): str,
+                vol.Required(CONF_LOCK_SALT, default=default_salt): str,
+            }),
+            errors=errors,
+        )
+
+
 class AtombergConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 2
 
@@ -104,7 +161,6 @@ class AtombergConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     _LOGGER.error("Lock authentication failed: %s", err)
                     errors["base"] = "auth_failed"
 
-        # Retain submitted user values if validation fails; otherwise fallback to placeholders
         default_mac = user_input.get(CONF_LOCK_MAC, EXAMPLE_MAC) if user_input else EXAMPLE_MAC
         default_key = user_input.get(CONF_STATIC_MASTER_KEY, EXAMPLE_KEY) if user_input else EXAMPLE_KEY
         default_salt = user_input.get(CONF_LOCK_SALT, EXAMPLE_SALT) if user_input else EXAMPLE_SALT
@@ -166,63 +222,6 @@ class AtombergConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="reconfigure",
-            data_schema=vol.Schema({
-                vol.Required(CONF_LOCK_MAC, default=default_mac): str,
-                vol.Required(CONF_STATIC_MASTER_KEY, default=default_key): str,
-                vol.Required(CONF_LOCK_SALT, default=default_salt): str,
-            }),
-            errors=errors,
-        )
-
-
-class AtombergOptionsFlowHandler(config_entries.OptionsFlow):
-    async def async_step_init(self, user_input=None):
-        errors = {}
-        entry = self.config_entry
-
-        if user_input is not None:
-            address = user_input[CONF_LOCK_MAC].strip().upper()
-            raw_key = user_input[CONF_STATIC_MASTER_KEY].strip()
-            raw_salt = user_input[CONF_LOCK_SALT].strip()
-
-            key_bytes = _parse_master_key(raw_key)
-            salt_bytes = _parse_lock_salt(raw_salt)
-
-            if key_bytes is None:
-                errors["base"] = "invalid_master_key"
-            elif salt_bytes is None:
-                errors["base"] = "invalid_lock_salt"
-            else:
-                try:
-                    battery = await _async_validate_lock_credentials(self.hass, address, key_bytes, salt_bytes)
-                    self.hass.config_entries.async_update_entry(
-                        entry,
-                        data={
-                            **entry.data,
-                            CONF_LOCK_MAC: address,
-                            CONF_STATIC_MASTER_KEY: raw_key,
-                            CONF_LOCK_SALT: raw_salt,
-                            "initial_battery": battery,
-                        },
-                    )
-                    await self.hass.config_entries.async_reload(entry.entry_id)
-                    return self.async_create_entry(title="", data={})
-                except ConnectionError:
-                    errors["base"] = "cannot_connect"
-                except Exception as err:
-                    _LOGGER.error("Lock options validation failed: %s", err)
-                    errors["base"] = "auth_failed"
-
-        current_address = entry.data.get(CONF_LOCK_MAC, entry.data.get("address", ""))
-        current_key = entry.data.get(CONF_STATIC_MASTER_KEY, entry.data.get("master_key", entry.data.get("static_key", "")))
-        current_salt = entry.data.get(CONF_LOCK_SALT, "")
-
-        default_mac = user_input.get(CONF_LOCK_MAC, current_address) if user_input else current_address
-        default_key = user_input.get(CONF_STATIC_MASTER_KEY, current_key) if user_input else current_key
-        default_salt = user_input.get(CONF_LOCK_SALT, current_salt) if user_input else current_salt
-
-        return self.async_show_form(
-            step_id="init",
             data_schema=vol.Schema({
                 vol.Required(CONF_LOCK_MAC, default=default_mac): str,
                 vol.Required(CONF_STATIC_MASTER_KEY, default=default_key): str,
