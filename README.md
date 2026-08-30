@@ -124,6 +124,8 @@ The script will output the exact `LOCK_MAC`, `STATIC_MASTER_KEY`, and `LOCK_SALT
 
 ---
 
+<img src="screenshots/entities.png" alt="Lock entities in Home Assistant" width="800">
+
 ## Slot Mappings (Custom User Names)
 
 The lock stores fingerprints and NFC cards by numeric slot IDs. You can map these IDs to friendly names directly via the **Slot Mappings JSON** text entity on the device page.

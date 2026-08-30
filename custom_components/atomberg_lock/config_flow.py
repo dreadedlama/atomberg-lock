@@ -104,12 +104,17 @@ class AtombergConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     _LOGGER.error("Lock authentication failed: %s", err)
                     errors["base"] = "auth_failed"
 
+        # Retain submitted user values if validation fails; otherwise fallback to placeholders
+        default_mac = user_input.get(CONF_LOCK_MAC, EXAMPLE_MAC) if user_input else EXAMPLE_MAC
+        default_key = user_input.get(CONF_STATIC_MASTER_KEY, EXAMPLE_KEY) if user_input else EXAMPLE_KEY
+        default_salt = user_input.get(CONF_LOCK_SALT, EXAMPLE_SALT) if user_input else EXAMPLE_SALT
+
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema({
-                vol.Required(CONF_LOCK_MAC, default=EXAMPLE_MAC): str,
-                vol.Required(CONF_STATIC_MASTER_KEY, default=EXAMPLE_KEY): str,
-                vol.Required(CONF_LOCK_SALT, default=EXAMPLE_SALT): str,
+                vol.Required(CONF_LOCK_MAC, default=default_mac): str,
+                vol.Required(CONF_STATIC_MASTER_KEY, default=default_key): str,
+                vol.Required(CONF_LOCK_SALT, default=default_salt): str,
             }),
             errors=errors,
         )
@@ -155,12 +160,16 @@ class AtombergConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         current_key = entry.data.get(CONF_STATIC_MASTER_KEY, entry.data.get("master_key", entry.data.get("static_key", "")))
         current_salt = entry.data.get(CONF_LOCK_SALT, "")
 
+        default_mac = user_input.get(CONF_LOCK_MAC, current_address) if user_input else current_address
+        default_key = user_input.get(CONF_STATIC_MASTER_KEY, current_key) if user_input else current_key
+        default_salt = user_input.get(CONF_LOCK_SALT, current_salt) if user_input else current_salt
+
         return self.async_show_form(
             step_id="reconfigure",
             data_schema=vol.Schema({
-                vol.Required(CONF_LOCK_MAC, default=current_address): str,
-                vol.Required(CONF_STATIC_MASTER_KEY, default=current_key): str,
-                vol.Required(CONF_LOCK_SALT, default=current_salt): str,
+                vol.Required(CONF_LOCK_MAC, default=default_mac): str,
+                vol.Required(CONF_STATIC_MASTER_KEY, default=default_key): str,
+                vol.Required(CONF_LOCK_SALT, default=default_salt): str,
             }),
             errors=errors,
         )
@@ -208,12 +217,16 @@ class AtombergOptionsFlowHandler(config_entries.OptionsFlow):
         current_key = entry.data.get(CONF_STATIC_MASTER_KEY, entry.data.get("master_key", entry.data.get("static_key", "")))
         current_salt = entry.data.get(CONF_LOCK_SALT, "")
 
+        default_mac = user_input.get(CONF_LOCK_MAC, current_address) if user_input else current_address
+        default_key = user_input.get(CONF_STATIC_MASTER_KEY, current_key) if user_input else current_key
+        default_salt = user_input.get(CONF_LOCK_SALT, current_salt) if user_input else current_salt
+
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
-                vol.Required(CONF_LOCK_MAC, default=current_address): str,
-                vol.Required(CONF_STATIC_MASTER_KEY, default=current_key): str,
-                vol.Required(CONF_LOCK_SALT, default=current_salt): str,
+                vol.Required(CONF_LOCK_MAC, default=default_mac): str,
+                vol.Required(CONF_STATIC_MASTER_KEY, default=default_key): str,
+                vol.Required(CONF_LOCK_SALT, default=default_salt): str,
             }),
             errors=errors,
         )

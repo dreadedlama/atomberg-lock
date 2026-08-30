@@ -1,14 +1,18 @@
 """Atomberg lock entity."""
 from __future__ import annotations
 
-from homeassistant.components.lock import LockEntity
+from homeassistant.components.lock import LockEntity, LockEntityFeature
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import DeviceInfo
 
 from .const import ATTR_LAST_UNLOCK, ATTR_LAST_UNLOCK_METHOD, DOMAIN, MANUFACTURER
 
+
 class AtombergLock(LockEntity):
     _attr_has_entity_name = True
     _attr_name = "Lock"
+    # Declares that this lock supports opening/unlatching
+    _attr_supported_features = LockEntityFeature.OPEN
 
     def __init__(self, coordinator):
         self.coordinator = coordinator
@@ -22,8 +26,13 @@ class AtombergLock(LockEntity):
         self._remove_listener = coordinator.add_listener(self.async_write_ha_state)
 
     @property
-    def is_locked(self):
+    def is_locked(self) -> bool:
         return self.coordinator.locked
+
+    @property
+    def is_unlocking(self) -> bool:
+        """Shows transitioning/pending state in Home Assistant UI during the unlock sequence."""
+        return self.coordinator.is_unlocking
 
     @property
     def extra_state_attributes(self):
@@ -31,15 +40,21 @@ class AtombergLock(LockEntity):
             ATTR_LAST_UNLOCK_METHOD: self.coordinator.last_unlock_method,
             ATTR_LAST_UNLOCK: (
                 self.coordinator.last_unlock.isoformat()
-                if self.coordinator.last_unlock else None
+                if self.coordinator.last_unlock
+                else None
             ),
         }
 
     async def async_lock(self, **kwargs):
-        self.coordinator.locked = True
-        self.async_write_ha_state()
+        """Prevent locking via software since hardware auto-relocks physically."""
+        raise HomeAssistantError("Atomberg SL1 Pro cannot be locked remotely; it auto-relocks physically.")
 
     async def async_unlock(self, **kwargs):
+        """Trigger momentary unlock with 5s auto-relock timer."""
+        await self.coordinator.async_unlock()
+
+    async def async_open(self, **kwargs):
+        """Allow the 'Open' / 'Unlatch' button in the dashboard to trigger unlock."""
         await self.coordinator.async_unlock()
 
     async def async_will_remove_from_hass(self):

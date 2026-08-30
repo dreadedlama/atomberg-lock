@@ -6,7 +6,7 @@
   "dependencies": [
     "bluetooth"
   ],
-  "documentation": "https://github.com/dreadedlama/ha-atomberg-lock",
+  "documentation": "https://github.com/dreadedlama/atomberg-lock",
   "integration_type": "device",
   "iot_class": "local_push",
   "requirements": [
