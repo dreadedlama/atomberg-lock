@@ -1,0 +1,17 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Atomberg Lock",
+        "description": "Enter the BLE address and 16-byte static master key for your Atomberg lock.",
+        "data": {
+          "address": "BLE address",
+          "static_key": "Static master key"
+        }
+      }
+    },
+    "error": {
+      "invalid_static_key": "The static key must be exactly 16 UTF-8 bytes."
+    }
+  }
+}

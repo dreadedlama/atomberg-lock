@@ -1,0 +1,50 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configure Atomberg Lock",
+        "description": "Enter your device parameters below (sample placeholders provided).",
+        "data": {
+          "LOCK_MAC": "LOCK_MAC (e.g. AA:BB:CC:11:22:33)",
+          "STATIC_MASTER_KEY": "STATIC_MASTER_KEY (16 bytes, e.g. AbCdEfGhIjKlMnOp)",
+          "LOCK_SALT": "LOCK_SALT (4-byte Hex, e.g. 1a2b3c4d)"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Atomberg Lock",
+        "description": "Update your lock connection credentials.",
+        "data": {
+          "LOCK_MAC": "LOCK_MAC",
+          "STATIC_MASTER_KEY": "STATIC_MASTER_KEY",
+          "LOCK_SALT": "LOCK_SALT"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not establish BLE connection to the lock. Ensure it is awake and within range.",
+      "invalid_master_key": "STATIC_MASTER_KEY must be exactly 16 characters (ASCII) or 32 hex characters.",
+      "invalid_lock_salt": "LOCK_SALT must be exactly 4 bytes in hex format (8 hex characters, e.g. 1a2b3c4d).",
+      "auth_failed": "Authentication failed (F0/F1/F2). Verify your STATIC_MASTER_KEY and LOCK_SALT, and ensure the official mobile app is completely closed."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Atomberg Lock Settings",
+        "description": "View or update the configured BLE parameters.",
+        "data": {
+          "LOCK_MAC": "LOCK_MAC",
+          "STATIC_MASTER_KEY": "STATIC_MASTER_KEY",
+          "LOCK_SALT": "LOCK_SALT"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not establish BLE connection to the lock. Ensure it is awake and within range.",
+      "invalid_master_key": "STATIC_MASTER_KEY must be exactly 16 characters (ASCII) or 32 hex characters.",
+      "invalid_lock_salt": "LOCK_SALT must be exactly 4 bytes in hex format (8 hex characters, e.g. 1a2b3c4d).",
+      "auth_failed": "Authentication failed (F0/F1/F2). Verify your STATIC_MASTER_KEY and LOCK_SALT, and ensure the official mobile app is completely closed."
+    }
+  },
+  "entity": {}
+}

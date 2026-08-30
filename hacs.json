@@ -1,0 +1,22 @@
+{
+  "domain": "atomberg_lock",
+  "name": "Atomberg Lock",
+  "codeowners": [
+    "@dreadedlama"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/dreadedlama/atomberg-lock",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "requirements": [
+    "bleak-retry-connector>=3.0.0",
+    "pycryptodome>=3.18.0"
+  ],
+  "bluetooth": [
+    {
+      "connectable": true
+    }
+  ],
+  "version": "1.0.0",
+  "homeassistant": "2026.3.0"
+}
