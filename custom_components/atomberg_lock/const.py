@@ -25,3 +25,11 @@ CONF_LOCK_SALT = "LOCK_SALT"
 
 ATTR_LAST_UNLOCK_METHOD = "last_unlock_method"
 ATTR_LAST_UNLOCK = "last_unlock"
+
+# Real-time event sensor keys matching ESPHome
+SENSOR_LAST_EVENT = "last_event"
+SENSOR_CRED_TYPE = "credential_type"
+SENSOR_SLOT_ID = "slot_id"
+SENSOR_PIN_CODE = "pin_code"
+SENSOR_LAST_TIMESTAMP = "last_timestamp"
+SENSOR_USER = "user"

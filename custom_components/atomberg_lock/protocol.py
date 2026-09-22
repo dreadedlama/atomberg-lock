@@ -29,9 +29,76 @@ def _format_ist_time(ts: int) -> str | None:
         from zoneinfo import ZoneInfo
         return datetime.fromtimestamp(ts, timezone.utc).astimezone(
             ZoneInfo("Asia/Kolkata")
-        ).strftime("%d-%m-%Y %I:%M:%S %p")
+        ).strftime("%Y-%m-%d %I:%M:%S %p")
     except Exception:
+        return "N/A"
+
+
+def parse_live_event(dec: bytes) -> dict | None:
+    """Parses real-time live notification (0x000A) matching ESPHome logic."""
+    if len(dec) < 20:
         return None
+
+    cmd_id = (dec[5] << 8) | dec[6]
+    if cmd_id != 0x000A:
+        return None
+
+    battery = dec[13]
+    event_cat = dec[15]
+    ts = (dec[16] << 24) | (dec[17] << 16) | (dec[18] << 8) | dec[19]
+
+    event_name = ""
+    cred_type_name = ""
+    pin_str = ""
+    slot_id = 0
+
+    if event_cat == 0x36:
+        event_name = "False / Denied Attempt"
+        fail_cred = dec[22] if len(dec) > 22 else 0
+        if fail_cred == 0x01:
+            cred_type_name = "Unregistered Fingerprint"
+        elif fail_cred == 0x02:
+            cred_type_name = "Wrong Keypad PIN"
+            pin_len = dec[26] if len(dec) > 26 else 0
+            if 0 < pin_len <= 16 and len(dec) >= (27 + pin_len):
+                pin_str = dec[27 : 27 + pin_len].decode("ascii", errors="ignore")
+        elif fail_cred == 0x04:
+            cred_type_name = "Unregistered NFC Card"
+        else:
+            cred_type_name = "Rejected Credential"
+
+    elif event_cat == 0x3D:
+        event_name = "Auto-Lock / Latch"
+        cred_type_name = "System Auto-Lock"
+
+    elif event_cat == 0x04:
+        event_name = "Unlocked Successfully"
+        cred_type = dec[22] if len(dec) > 22 else 0
+        slot_id = ((dec[23] << 8) | dec[24]) if len(dec) > 24 else 0
+
+        if cred_type == 0x01:
+            cred_type_name = "Fingerprint"
+        elif cred_type == 0x04:
+            cred_type_name = "NFC Card"
+        elif cred_type == 0x02:
+            cred_type_name = "PIN Code"
+            pin_len = dec[32] if len(dec) > 32 else 0
+            if 0 < pin_len <= 16 and len(dec) >= (33 + pin_len):
+                pin_str = dec[33 : 33 + pin_len].decode("ascii", errors="ignore")
+        elif cred_type == 0x00 or slot_id == 0:
+            cred_type_name = "Atomberg App"
+        else:
+            cred_type_name = "Other Credential"
+
+    return {
+        "battery": battery,
+        "event": event_name,
+        "cred_type": cred_type_name,
+        "slot_id": slot_id,
+        "pin_code": pin_str if pin_str else "N/A",
+        "timestamp": _format_ist_time(ts),
+        "raw_ts": ts,
+    }
 
 
 def parse_log_record(rec: bytes, slot_mappings: dict[int, str] | None = None) -> dict:
@@ -140,10 +207,11 @@ def parse_log_record(rec: bytes, slot_mappings: dict[int, str] | None = None) ->
 
 
 class AtombergProtocol:
-    def __init__(self, ble_target, master_key: bytes, lock_salt: bytes):
+    def __init__(self, ble_target, master_key: bytes, lock_salt: bytes, on_live_event=None):
         self.ble_target = ble_target
         self.master_key = master_key
         self.lock_salt = lock_salt
+        self.on_live_event = on_live_event
         self.client = None
         self.session_token = None
         self.session_key = None
@@ -203,6 +271,18 @@ class AtombergProtocol:
         if self.expected_len > 0 and len(self.rx_buffer) >= self.expected_len:
             full_frame = bytes(self.rx_buffer[: self.expected_len])
             encrypted_payload = full_frame[7 : self.expected_len - 2]
+            
+            # Check for unsolicited live notifications (0x000A)
+            if self.session_key and self.on_live_event:
+                try:
+                    dec = decrypt_ecb(self.session_key, encrypted_payload)
+                    if len(dec) >= 7 and ((dec[5] << 8) | dec[6]) == 0x000A:
+                        live_data = parse_live_event(dec)
+                        if live_data:
+                            self.on_live_event(live_data)
+                except Exception as ex:
+                    _LOGGER.debug("Error checking live event: %s", ex)
+
             self.recv_queue.put_nowait(encrypted_payload)
             self.rx_buffer = bytearray(self.rx_buffer[self.expected_len :])
             self.expected_len = 0
@@ -318,7 +398,12 @@ class AtombergProtocol:
 
         return battery if (battery is not None and 0 <= battery <= 100) else None
 
-    async def fetch_all_logs(self, slot_mappings: dict[int, str] | None = None) -> list[dict]:
+    async def fetch_incremental_logs(
+        self,
+        start_offset: int = 0,
+        slot_mappings: dict[int, str] | None = None,
+    ) -> list[dict]:
+        """Fetches only unread log records beyond start_offset."""
         self.seq_counter = 7
         count_req = (
             self.session_token
@@ -334,21 +419,28 @@ class AtombergProtocol:
             expected_op=bytes.fromhex("0008"),
         )
         total_records = int.from_bytes(count_dec[-2:], byteorder="big")
+        _LOGGER.debug(
+            "LOGS: Total on hardware = %d, already cached = %d",
+            total_records,
+            start_offset,
+        )
 
-        if total_records == 0:
+        if total_records <= start_offset:
+            _LOGGER.info("LOGS: Local cache is up-to-date (no new records).")
             return []
 
-        all_records = []
-        total_pages = (total_records + 4) // 5
+        new_records = []
+        curr_offset = start_offset
 
-        for page in range(total_pages):
-            offset = page * 5
+        while curr_offset < total_records:
+            batch_size = min(5, total_records - curr_offset)
+
             fetch_req = (
                 self.session_token
                 + bytes([self.seq_counter])
                 + bytes.fromhex("0009010003e9001f")
-                + offset.to_bytes(2, byteorder="big")
-                + bytes.fromhex("0005")
+                + curr_offset.to_bytes(2, byteorder="big")
+                + batch_size.to_bytes(2, byteorder="big")
             )
             self.seq_counter = (self.seq_counter + 1) & 0xFF
 
@@ -370,18 +462,16 @@ class AtombergProtocol:
                     continue
 
                 parsed = parse_log_record(rec, slot_mappings)
-                parsed = {
-                    "count": len(all_records) + 1,
-                    **parsed,
-                }
-                all_records.append(parsed)
+                parsed["count"] = start_offset + len(new_records) + 1
+                new_records.append(parsed)
 
-        return all_records
+            curr_offset += batch_size
+
+        return new_records
 
     async def unlock(self) -> int:
         ts = int(time.time()).to_bytes(4, byteorder="big")
 
-        # 4. Time calibration 0x0007
         time_cmd = (
             self.session_token
             + bytes.fromhex("010007000003e9000c")
@@ -395,7 +485,6 @@ class AtombergProtocol:
             expected_op=bytes.fromhex("0007"),
         )
 
-        # 5. Remote unlock 0x0001
         unlock_payload = (
             self.session_token
             + bytes.fromhex("070001060103e9001500000006")
