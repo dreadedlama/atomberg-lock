@@ -19,6 +19,11 @@
 - **Fast Remote Unlock:** Direct unlock trigger with local auto re-lock state tracking.
 - **Battery Status:** On-demand battery level polling.
 - **Audit Log Sync:** Reads and parses hardware event logs, including unlock attempts, fingerprint, NFC Card scans, physical thumbturn usage, and failed/denied access attempts.
+- **Credential Type:** Show the credential type used for last unlock.
+- **Last Event:** Last unlock attempt was successful or failed.
+- **Last Timestamp:** Timestamp of the last event.
+- **User:** The user that triggered the last event.
+- **Keypad Pin:** If keypad was used, shows the last pin entered.
 - **Configurable Credential Mapping:** Name your registered fingerprint slots and NFC cards directly within Home Assistant via a JSON configuration text entity.
 - **Persistent State:** Log history and credential maps persist across Home Assistant restarts.
 - **Full UI Configuration:** Complete setup, options flow, and reconfiguration through the Home Assistant UI.
@@ -118,13 +123,21 @@ The script will output the exact `LOCK_MAC`, `STATIC_MASTER_KEY`, and `LOCK_SALT
 | **Lock** | `lock` | Controls remote unlock and displays current lock state. |
 | **Get Battery** | `button` | Triggers an active BLE query to refresh battery percentage. |
 | **Fetch Logs** | `button` | Downloads and parses recent audit log records from the lock. |
-| **Battery** | `sensor` | Current lock battery percentage. |
+| **Credential Type** | `sensor` | The type of credential used for the last recorded access attempt, such as fingerprint, NFC card, keypad PIN |
+| **Last Event** | `sensor` | Shows the result of the last recorded access attempt, such as a successful unlock or a failed/denied attempt. |
+| **Last Timestamp** | `sensor` | Date and time when the last recorded access attempt occurred. |
 | **Logs** | `sensor` | Total count of audit records; attributes contain the last 10 parsed events. |
+| **Slot ID** | `sensor` | Shows the numeric slot ID associated with the credential used for the last recorded access attempt, when applicable. |
+| **User** | `sensor` | Shows the configured name of the user associated with the last attempt. The name is resolved from the Slot Mappings JSON configuration. |
 | **Slot Mappings JSON** | `text` | Editable JSON object mapping numeric slot IDs to human-readable names. |
+| **Keypad PIN** | `sensor` | Last keypad PIN entered during a keypad access attempt, when available. |
 
 ---
 
-<img src="screenshots/entities.png" alt="Lock entities in Home Assistant" width="800">
+<div>
+  <img src="screenshots/entities-1.png" alt="Lock entities in Home Assistant" width="400" style="margin-right: 10px;">
+  <img src="screenshots/entities-2.png" alt="Lock entities in Home Assistant" width="400">
+</div>
 
 ## Slot Mappings (Custom User Names)
 
